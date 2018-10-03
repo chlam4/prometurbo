@@ -17,7 +17,7 @@ const (
 	Capacity = "capacity"
 
 	// Capacity
-	TPSCap     = 20.0
+	TPSCap     = 1000.0
 	LatencyCap = 500.0 //millisec
 
 	// The default namespace of entity property
