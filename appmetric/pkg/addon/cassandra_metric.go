@@ -5,24 +5,23 @@ import (
 	"github.com/turbonomic/prometurbo/appmetric/pkg/alligator"
 	"github.com/turbonomic/prometurbo/appmetric/pkg/inter"
 	xfire "github.com/turbonomic/prometurbo/appmetric/pkg/prometheus"
-	"github.com/turbonomic/prometurbo/appmetric/pkg/util"
 	"github.com/turbonomic/turbo-go-sdk/pkg/proto"
 )
 
 const (
 	// query for latency (max of read and write) in milliseconds
-	cassandra_latency_query = `0.001*max(cassandra_stats{name=~"org:apache:cassandra:metrics:table:(write|read)latency:99thpercentile"}) by (instance)`
+	//cassandra_latency_query = `0.001*max(cassandra_stats{name=~"org:apache:cassandra:metrics:table:(write|read)latency:99thpercentile"}) by (instance)`
 
 	// query for transaction per second (sum of read and write)
-	cassandra_ops_query = `sum(cassandra_stats{name=~"org:apache:cassandra:metrics:table:(write|read)latency:oneminuterate"}) by (instance)`
+	cassandra_ops_query = `istio_requests_total`
 
-	default_Cassandra_Port = 8080
+	//default_Cassandra_Port = 8080
 )
 
 // Map of Turbo metric type to Cassandra query
 var queryMap = map[proto.CommodityDTO_CommodityType]string{
-	inter.LatencyType: cassandra_latency_query,
-	inter.TpsType:     cassandra_ops_query,
+	//inter.LatencyType: cassandra_latency_query,
+	inter.TpsType: cassandra_ops_query,
 }
 
 type CassandraEntityGetter struct {
@@ -75,7 +74,10 @@ func (r *CassandraEntityGetter) GetEntityMetric(client *xfire.RestClient) ([]*in
 
 // addEntity creates entities from the metric data
 func (r *CassandraEntityGetter) addEntity(mdat []xfire.MetricData, result map[string]*inter.EntityMetric, key proto.CommodityDTO_CommodityType) error {
-	addrName := "instance"
+	srcNsLabel := "source_workload_namespace"
+	desNsLabel := "destination_service_namespace"
+	srcSvcLabel := "source_workload"
+	desSvcLabel := "destination_app"
 
 	for _, dat := range mdat {
 		metric, ok := dat.(*xfire.BasicMetricData)
@@ -85,26 +87,25 @@ func (r *CassandraEntityGetter) addEntity(mdat []xfire.MetricData, result map[st
 		}
 
 		//1. get IP
-		addr, ok := metric.Labels[addrName]
-		if !ok {
-			glog.Errorf("Label %v is not found", addrName)
+		srcNs, ok1 := metric.Labels[srcNsLabel]
+		desNs, ok2 := metric.Labels[desNsLabel]
+		srcSvc, ok3 := metric.Labels[srcSvcLabel]
+		desSvc, ok4 := metric.Labels[desSvcLabel]
+		if !ok1 || !ok2 || !ok3 || !ok4 {
+			glog.Errorf("Label not found")
 			continue
 		}
 
-		ip, port, err := util.ParseIP(addr, default_Cassandra_Port)
-		if err != nil {
-			glog.Errorf("Failed to parse IP from addr[%v]: %v", addr, err)
-			continue
-		}
+		consumerId := srcNs + "/" + srcSvc
+		providerId := desNs + "/" + desSvc
 
 		//2. add entity metrics
-		entity, ok := result[ip]
+		entity, ok := result[providerId]
 		if !ok {
-			entity = inter.NewEntityMetric(ip, inter.AppEntity)
-			entity.SetLabel(inter.IP, ip)
-			entity.SetLabel(inter.Port, port)
+			entity = inter.NewEntityMetric(providerId, inter.AppEntity)
+			entity.SetLabel("CONSUMER", consumerId)
 			entity.SetLabel(inter.Category, r.Category())
-			result[ip] = entity
+			result[providerId] = entity
 		}
 
 		entity.SetMetric(key, metric.GetValue())

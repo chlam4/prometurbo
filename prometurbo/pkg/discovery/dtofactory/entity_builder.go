@@ -36,7 +36,11 @@ func (b *entityBuilder) Build() ([]*proto.EntityDTO, error) {
 
 	dtos := []*proto.EntityDTO{entityDto}
 
-	consumerDto, err := b.createConsumerEntity(entityDto, ip)
+	consumerName := ip
+	if _, ok := metric.Labels["CONSUMER"]; ok {
+		consumerName = metric.Labels["CONSUMER"]
+	}
+	consumerDto, err := b.createConsumerEntity(entityDto, consumerName)
 
 	if err != nil {
 		glog.Errorf("Error building consumer EntityDTO from metric %v: %s", metric, err)
@@ -88,9 +92,9 @@ func getEntityProperty(value string) *proto.EntityDTO_EntityProperty {
 }
 
 // Creates consumer entity from a given provider entity. Currently, the use case is to create vApp from Application.
-func (b *entityBuilder) createConsumerEntity(provider *proto.EntityDTO, ip string) (*proto.EntityDTO, error) {
+func (b *entityBuilder) createConsumerEntity(provider *proto.EntityDTO, name string) (*proto.EntityDTO, error) {
 	entityType := *provider.EntityType
-	id := b.getEntityId(entityType, ip)
+	id := b.getEntityId(entityType, name)
 	commodities := provider.CommoditiesSold
 
 	commTypes := []proto.CommodityDTO_CommodityType{}
@@ -101,13 +105,14 @@ func (b *entityBuilder) createConsumerEntity(provider *proto.EntityDTO, ip strin
 	// For application entity, we also want to create proxy enitites for vApp.
 	// The logic may or may not apply to other entity types depending on future use cases, if any.
 	if entityType == proto.EntityDTO_APPLICATION {
-		provider := builder.CreateProvider(entityType, id)
+		providerId := provider.GetId()
+		provider := builder.CreateProvider(entityType, providerId)
 		vAppType := proto.EntityDTO_VIRTUAL_APPLICATION
 		vappDto, err := builder.NewEntityDTOBuilder(vAppType, constant.VAppPrefix+id).
 			DisplayName(constant.VAppPrefix + id).
 			Provider(provider).
 			BuysCommodities(commodities).
-			WithProperty(getEntityProperty(constant.VAppPrefix + ip)).
+			WithProperty(getEntityProperty(constant.VAppPrefix + name)).
 			ReplacedBy(getReplacementMetaData(vAppType, commTypes, true)).
 			Monitored(false).
 			Create()
