@@ -3,31 +3,50 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:1ba1d79f2810270045c328ae5d674321db34e3aae468eb4233883b473c5c0467"
   name = "github.com/golang/glog"
   packages = ["."]
+  pruneopts = "UT"
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
+  digest = "1:97df918963298c287643883209a2c3f642e6593379f97ab400c2a2e219ab647d"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "e09c5db296004fbe3f74490e84dcd62c3c5ddb1b"
+  pruneopts = "UT"
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+  version = "v1.2.0"
 
 [[projects]]
+  digest = "1:7b5c6e2eeaa9ae5907c391a91c132abfd5c9e8a784a341b5625e750c67e6825d"
   name = "github.com/gorilla/websocket"
   packages = ["."]
-  revision = "6f34763140ed8887aed6a044912009832b4733d7"
+  pruneopts = "UT"
+  revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
+  version = "v1.4.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:6b617d70f2e6fb5ea1fb04cd0c37badc0d8d2e1f05283cb6ecf9a00a998287b4"
+  name = "github.com/turbonomic/prometurbo"
+  packages = ["appmetric/pkg/inter"]
+  pruneopts = "UT"
+  revision = "cc77ec626c92877c44b565cdc6f79831b1bacaca"
+
+[[projects]]
+  branch = "master"
+  digest = "1:64510e935a9274334439ed06996736b13d97ead708cba43901bb572ae4daea23"
   name = "github.com/turbonomic/turbo-api"
   packages = [
     "pkg/api",
-    "pkg/client"
+    "pkg/client",
   ]
-  revision = "82c860983629566c406b4bc4c3ce7c8df37715cc"
+  pruneopts = "UT"
+  revision = "ed948ba97e7008d35683d082f8c69e3d38d146d0"
 
 [[projects]]
-  branch = "6.1"
+  branch = "add-matching-external-property-for-replacement-entity-meta-data"
+  digest = "1:9b65cdb8f7e32cb7d98edddca40ba9d5b01d79ccdfed9c8067c89581015b8791"
   name = "github.com/turbonomic/turbo-go-sdk"
   packages = [
     "pkg",
@@ -37,13 +56,23 @@
     "pkg/proto",
     "pkg/service",
     "pkg/supplychain",
-    "pkg/version"
+    "pkg/version",
   ]
-  revision = "773315de6e27bf3aabc72e1ccec3c7de2b3db2eb"
+  pruneopts = "UT"
+  revision = "7b9bc3e330b8ae2da26214245354f78b9fe5902a"
+  source = "github.com/chlam4/turbo-go-sdk"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1b3c8086a5e140ad0fd49cfd0f3878cf36efca35587a9c0386ae1c23f512c600"
+  input-imports = [
+    "github.com/golang/glog",
+    "github.com/turbonomic/prometurbo/appmetric/pkg/inter",
+    "github.com/turbonomic/turbo-go-sdk/pkg/builder",
+    "github.com/turbonomic/turbo-go-sdk/pkg/probe",
+    "github.com/turbonomic/turbo-go-sdk/pkg/proto",
+    "github.com/turbonomic/turbo-go-sdk/pkg/service",
+    "github.com/turbonomic/turbo-go-sdk/pkg/supplychain",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

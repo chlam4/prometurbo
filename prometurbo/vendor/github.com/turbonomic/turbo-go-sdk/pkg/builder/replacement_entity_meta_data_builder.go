@@ -52,6 +52,11 @@ func (builder *ReplacementEntityMetaDataBuilder) MatchingExternal(propertyDef *p
 	return builder
 }
 
+func (builder *ReplacementEntityMetaDataBuilder) MatchingExternalProperty(property string) *ReplacementEntityMetaDataBuilder {
+	builder.metaData.ExtEntityProp = append(builder.metaData.GetExtEntityProp(), property)
+	return builder
+}
+
 // Set the commodity type whose metric values will be transferred to the entity
 // builder DTO will be replaced by.
 func (builder *ReplacementEntityMetaDataBuilder) PatchBuying(commType proto.CommodityDTO_CommodityType) *ReplacementEntityMetaDataBuilder {

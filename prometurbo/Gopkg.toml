@@ -30,8 +30,9 @@
   name = "github.com/golang/glog"
 
 [[constraint]]
-  branch = "6.1"
   name = "github.com/turbonomic/turbo-go-sdk"
+  branch = "add-matching-external-property-for-replacement-entity-meta-data"
+  source = "github.com/chlam4/turbo-go-sdk"
 
 [prune]
   go-tests = true
