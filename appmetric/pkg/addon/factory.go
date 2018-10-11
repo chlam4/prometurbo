@@ -10,6 +10,7 @@ const (
 	CassandraGetterCategory = "Cassandra"
 	IstioGetterCategory     = "Istio"
 	IstioVAppGetterCategory = "Istio.VApp"
+	IstioFaaSGetterCategory = "Istio-FaaS.VApp"
 )
 
 type GetterFactory struct {
@@ -35,6 +36,8 @@ func (f *GetterFactory) CreateEntityGetter(category, name, du string) (alligator
 		forVapp := true
 		g.SetType(forVapp)
 		return g, nil
+	case IstioFaaSGetterCategory:
+		return NewIstioFaaSEntityGetter(name, du), nil
 	}
 
 	return nil, fmt.Errorf("Unknown category: %v", category)

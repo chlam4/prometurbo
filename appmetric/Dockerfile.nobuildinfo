@@ -1,0 +1,13 @@
+# This Dockerfile can be used to create the image using MacOS.
+# It does not copy the build.info as would be done in the regular Dockerfile to avoid the copy failure in MacOS.
+#
+FROM alpine:3.7
+RUN apk --update upgrade && apk add ca-certificates && update-ca-certificates
+
+ARG GIT_COMMIT
+ENV GIT_COMMIT ${GIT_COMMIT}
+
+COPY ./_output/appMetric.linux /bin/appMetric
+RUN chmod +x /bin/appMetric
+EXPOSE 8081
+ENTRYPOINT ["/bin/appMetric"]

@@ -147,6 +147,14 @@ func main() {
 	}
 	vappClient.AddGetter(vappGetter)
 
+	istioFaaSGetter, err := factory.CreateEntityGetter(addon.IstioFaaSGetterCategory, "istio-faas.vapp.metric", sampleDuration)
+	if err != nil {
+		glog.Errorf("Failed to create Istio FaaS VApp getter: %v", err)
+		return
+	}
+	glog.V(4).Infof("Added Istio getter for FaaS: %+v", istioFaaSGetter)
+	vappClient.AddGetter(istioFaaSGetter)
+
 	s := server.NewMetricServer(port, appClient, vappClient)
 	s.Run()
 	return
