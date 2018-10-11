@@ -52,6 +52,7 @@ func (f *SupplyChainFactory) buildAppSupplyBuilder() (*proto.TemplateDTO, error)
 func (f *SupplyChainFactory) buildVAppSupplyBuilder() (*proto.TemplateDTO, error) {
 	builder := supplychain.NewSupplyChainNodeBuilder(proto.EntityDTO_VIRTUAL_APPLICATION).
 		Provider(proto.EntityDTO_APPLICATION, proto.Provider_LAYERED_OVER).
+		Provider(proto.EntityDTO_VIRTUAL_APPLICATION, proto.Provider_LAYERED_OVER).
 		Buys(transactionTemplateComm).
 		Buys(respTimeTemplateComm)
 	builder.SetPriority(-1)

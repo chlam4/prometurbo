@@ -24,13 +24,13 @@ const (
 	DefaultPropertyNamespace = "DEFAULT"
 
 	// The attribute used for stitching with other probes (e.g., prometurbo) with app and vapp
-	StitchingAttr string = "IP"
+	StitchingAttr string = "DisplayName"
 
 	VAppPrefix = "vApp-"
 )
 
 var EntityTypeMap = map[proto.EntityDTO_EntityType]struct{}{
-	proto.EntityDTO_APPLICATION: {},
+	proto.EntityDTO_VIRTUAL_APPLICATION: {},
 }
 
 var CommodityTypeMap = map[proto.CommodityDTO_CommodityType]struct{}{
