@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	// query for transaction per second (sum of read and write)
-	istio_faas_ops_query = `istio_requests_total`
+	// query for transaction per second in the last 10 minutes
+	istio_faas_ops_query = `rate(istio_turbo_request_count_by_path[10m])`
 )
 
 // Map of Turbo metric type to Istio for FaaS query
@@ -68,11 +68,6 @@ func (r *IstioFaaSEntityGetter) GetEntityMetric(client *xfire.RestClient) ([]*in
 
 // addEntity creates entities from the metric data
 func (r *IstioFaaSEntityGetter) addEntity(mdat []xfire.MetricData, result map[string]*inter.EntityMetric, key proto.CommodityDTO_CommodityType) error {
-	srcNsLabel := "source_workload_namespace"
-	desNsLabel := "destination_workload_namespace"
-	srcSvcLabel := "source_app"
-	desSvcLabel := "destination_app"
-
 	for _, dat := range mdat {
 		metric, ok := dat.(*xfire.BasicMetricData)
 		if !ok {
@@ -80,17 +75,30 @@ func (r *IstioFaaSEntityGetter) addEntity(mdat []xfire.MetricData, result map[st
 			continue
 		}
 
-		srcNs, ok1 := metric.Labels[srcNsLabel]
-		desNs, ok2 := metric.Labels[desNsLabel]
-		srcSvc, ok3 := metric.Labels[srcSvcLabel]
-		desSvc, ok4 := metric.Labels[desSvcLabel]
-		if !ok1 || !ok2 || !ok3 || !ok4 {
-			glog.Errorf("Label not found")
+		srcApp, ok1 := metric.Labels["source_app"]
+		srcNs, ok2 := metric.Labels["source_workload_namespace"]
+		dstApp, ok3 := metric.Labels["destination_app"]
+		dstNs, ok4 := metric.Labels["destination_workload_namespace"]
+		svc, ok5 := metric.Labels["destination_service"]
+		svcNs, ok6 := metric.Labels["destination_service_namespace"]
+		uri, ok7 := metric.Labels["request_path"]
+
+		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 || !ok7 || dstApp == "unknown" {
+			glog.Errorf("Some required label not found or destination app is unknown in metric %v", metric)
 			continue
 		}
 
-		consumerId := srcNs + "/" + srcSvc
-		providerId := desNs + "/" + desSvc
+		consumerId := srcNs + "/" + srcApp
+		providerId := dstNs + "/" + dstApp + "-service"
+		if dstNs == svcNs {
+			//
+			// Destination is some function gateway such as Kong;
+			// qualify the provider using src_app + service_host + uri
+			// e.g. foo/kong-proxy.kong.svc.cluster.local/hello-kong
+			// Read this as: foo calls kong-proxy with path "/hello-kong"
+			//
+			providerId = srcApp + "/" + svc + uri
+		}
 
 		//2. add entity metrics
 		entity, ok := result[providerId]
