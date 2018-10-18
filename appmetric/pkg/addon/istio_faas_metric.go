@@ -11,11 +11,14 @@ import (
 const (
 	// query for transaction per second in the last 10 minutes
 	istio_faas_ops_query = `rate(istio_turbo_request_count_by_path[10m])`
+	// query for response time in ms in the last 10 minutes
+	istio_faas_response_time_query = `1000*rate(istio_turbo_request_duration_by_path_sum[10m])/rate(istio_turbo_request_duration_by_path_count[10m])`
 )
 
 // Map of Turbo metric type to Istio for FaaS query
 var istioFaaSQueryMap = map[proto.CommodityDTO_CommodityType]string{
-	inter.TpsType: istio_faas_ops_query,
+	inter.TpsType:     istio_faas_ops_query,
+	inter.LatencyType: istio_faas_response_time_query,
 }
 
 type IstioFaaSEntityGetter struct {
