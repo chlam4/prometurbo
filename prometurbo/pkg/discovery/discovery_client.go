@@ -104,13 +104,47 @@ func (d *P8sDiscoveryClient) buildEntities(metricExporter exporter.MetricExporte
 		return nil, err
 	}
 
+	// Generate two maps -
+	// 1) Map of producer vs the list of metrics by this producer
+	// 2. Map of consumer vs the list of metrics by this consumer
+	//
+	producerMap := make(map[string][]*exporter.EntityMetric)
+	consumerMap := make(map[string][]*exporter.EntityMetric)
 	for _, metric := range metrics {
-		dtos, err := dtofactory.NewEntityBuilder(d.scope, metric).Build()
+		//
+		// producer
+		//
+		producerId := metric.UID
+		metricList, exist := producerMap[producerId]
+		if !exist {
+			metricList = []*exporter.EntityMetric{}
+		}
+		metricList = append(metricList, metric)
+		producerMap[producerId] = metricList
+		//
+		// consumer
+		//
+		if _, ok := metric.Labels["CONSUMER"]; ok {
+			consumerId := metric.Labels["CONSUMER"]
+			metricList, exist := consumerMap[consumerId]
+			if !exist {
+				metricList = []*exporter.EntityMetric{}
+			}
+			metricList = append(metricList, metric)
+			consumerMap[consumerId] = metricList
+		}
+	}
+	glog.V(4).Infof("Producer map: %v", producerMap)
+	glog.V(4).Infof("Consumer map: %v", consumerMap)
+
+	producerBuilder := dtofactory.NewProducerEntityBuilder(d.scope)
+	for producerId, metrics := range producerMap {
+		dto, err := producerBuilder.Build(producerId, metrics)
 		if err != nil {
-			glog.Errorf("Error building entity from metric %v: %s", metric, err)
+			glog.Errorf("Error building entity for producer %s with metrics %v: %s", producerId, metrics, err)
 			continue
 		}
-		entities = append(entities, dtos...)
+		entities = append(entities, dto)
 	}
 
 	return entities, nil
