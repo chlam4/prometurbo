@@ -1,6 +1,8 @@
 package constant
 
 import (
+	"fmt"
+	"github.com/turbonomic/turbo-go-sdk/pkg/builder"
 	"github.com/turbonomic/turbo-go-sdk/pkg/proto"
 )
 
@@ -17,7 +19,7 @@ const (
 	Capacity = "capacity"
 
 	// Capacity
-	TPSCap     = 1000.0
+	TPSCap     = 20.0
 	LatencyCap = 500.0 //millisec
 
 	// The default namespace of entity property
@@ -41,4 +43,19 @@ var CommodityTypeMap = map[proto.CommodityDTO_CommodityType]struct{}{
 var CommodityCapMap = map[proto.CommodityDTO_CommodityType]float64{
 	proto.CommodityDTO_TRANSACTION:   TPSCap,
 	proto.CommodityDTO_RESPONSE_TIME: LatencyCap,
+}
+
+func GetEntityId(entityType proto.EntityDTO_EntityType, scope, entityName string) string {
+	return fmt.Sprintf("%s-%s/%s", entityType, scope, entityName)
+}
+
+func GetReplacementEntityMetaData() *proto.EntityDTO_ReplacementEntityMetaData {
+	return builder.NewReplacementEntityMetaDataBuilder().
+		Matching(StitchingAttr).
+		MatchingExternalProperty(StitchingAttr).
+		PatchBuyingWithProperty(proto.CommodityDTO_TRANSACTION, []string{Used}).
+		PatchBuyingWithProperty(proto.CommodityDTO_RESPONSE_TIME, []string{Used}).
+		PatchSellingWithProperty(proto.CommodityDTO_TRANSACTION, []string{Used, Capacity}).
+		PatchSellingWithProperty(proto.CommodityDTO_RESPONSE_TIME, []string{Used, Capacity}).
+		Build()
 }

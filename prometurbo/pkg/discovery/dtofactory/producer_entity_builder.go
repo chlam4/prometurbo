@@ -1,7 +1,6 @@
 package dtofactory
 
 import (
-	"fmt"
 	"github.com/golang/glog"
 	"github.com/turbonomic/prometurbo/prometurbo/pkg/discovery/constant"
 	"github.com/turbonomic/prometurbo/prometurbo/pkg/discovery/exporter"
@@ -22,8 +21,9 @@ func NewProducerEntityBuilder(scope string) *producerEntityBuilder {
 
 func (b *producerEntityBuilder) Build(name string, metrics []*exporter.EntityMetric) (*proto.EntityDTO, error) {
 	entityType := metrics[0].Type
-	uuid := fmt.Sprintf("%s-%s/%s", entityType, b.scope, name)
+	uuid := constant.GetEntityId(entityType, b.scope, name)
 	displayName := constant.VAppPrefix + name
+	key := metrics[0].Labels["KEY"]
 
 	// Aggregate the total transaction used for this producer
 	//
@@ -46,40 +46,34 @@ func (b *producerEntityBuilder) Build(name string, metrics []*exporter.EntityMet
 		WithProperty(getEntityProperty(displayName)).
 		Monitored(false)
 
-	replacementBuilder := builder.NewReplacementEntityMetaDataBuilder().
-		Matching(constant.StitchingAttr).
-		MatchingExternalProperty(constant.StitchingAttr)
-
 	// Transaction commodity
 	//
 	transactionCapacity := math.Max(constant.TPSCap, totalTransactionUsed)	// Adjust capacity in case utilization > 1
 	// as Market doesn't allow it
 	transactionCommodity, err := builder.NewCommodityDTOBuilder(proto.CommodityDTO_TRANSACTION).
-		Used(totalTransactionUsed).Capacity(transactionCapacity).Key(name).Create()
+		Used(totalTransactionUsed).Capacity(transactionCapacity).Key(key).Create()
 	if err != nil {
 		glog.Errorf("Error building transaction commodity for entity %s with used %v, capacity %v and key %s: %s",
 			uuid, totalTransactionUsed, transactionCapacity, name, err)
 	} else {
 		dtoBuilder.SellsCommodity(transactionCommodity)
-		replacementBuilder.PatchSellingWithProperty(proto.CommodityDTO_TRANSACTION, []string{constant.Used, constant.Capacity})
 	}
 	//
 	// ResponseTime commodity
 	//
 	responseTimeCapacity := math.Max(constant.LatencyCap, totalResponseTimeUsed)
 	responseTimeCommodity, err := builder.NewCommodityDTOBuilder(proto.CommodityDTO_RESPONSE_TIME).
-		Used(totalResponseTimeUsed).Capacity(responseTimeCapacity).Key(name).Create()
+		Used(totalResponseTimeUsed).Capacity(responseTimeCapacity).Key(key).Create()
 	if err != nil {
 		glog.Errorf("Error building response time commodity for entity %s with used %v, capacity %v and key %s: %s",
 			uuid, totalResponseTimeUsed, responseTimeCapacity, name, err)
 	} else {
 		dtoBuilder.SellsCommodity(responseTimeCommodity)
-		replacementBuilder.PatchSellingWithProperty(proto.CommodityDTO_RESPONSE_TIME, []string{constant.Used, constant.Capacity})
 	}
 
-	entityDto, err := dtoBuilder.ReplacedBy(replacementBuilder.Build()).Create()
+	entityDto, err := dtoBuilder.ReplacedBy(constant.GetReplacementEntityMetaData()).Create()
 	if err != nil {
-		glog.Errorf("Error building EntityDTO for entity %s with metrics %v: %s", name, metrics, err)
+		glog.Errorf("Error building producer EntityDTO for entity %s with metrics %v: %s", name, metrics, err)
 		return nil, err
 	}
 

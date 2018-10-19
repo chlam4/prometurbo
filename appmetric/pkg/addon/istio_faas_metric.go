@@ -93,6 +93,7 @@ func (r *IstioFaaSEntityGetter) addEntity(mdat []xfire.MetricData, result map[st
 
 		consumerId := srcNs + "/" + srcApp
 		providerId := dstNs + "/" + dstApp + "-service"
+		// suffix to be matched with the k8s service for Knative functions
 		if dstNs == svcNs {
 			//
 			// Destination is some function gateway such as Kong;
@@ -103,15 +104,16 @@ func (r *IstioFaaSEntityGetter) addEntity(mdat []xfire.MetricData, result map[st
 			providerId = srcApp + "/" + svc + uri
 		}
 
-		//2. add entity metrics
-		entity, ok := result[providerId]
-		if !ok {
-			entity = inter.NewEntityMetric(providerId, inter.VAppEntity)
+		id := consumerId + "-" + providerId
+		entity, exist := result[id]
+		if !exist {
+			entity = inter.NewEntityMetric(id, inter.VAppEntity)
+			entity.SetLabel("PRODUCER", providerId)
 			entity.SetLabel("CONSUMER", consumerId)
+			entity.SetLabel("KEY", svc+uri)
 			entity.SetLabel(inter.Category, r.Category())
-			result[providerId] = entity
+			result[id] = entity
 		}
-
 		entity.SetMetric(key, metric.GetValue())
 	}
 

@@ -114,18 +114,18 @@ func (d *P8sDiscoveryClient) buildEntities(metricExporter exporter.MetricExporte
 		//
 		// producer
 		//
-		producerId := metric.UID
-		metricList, exist := producerMap[producerId]
-		if !exist {
-			metricList = []*exporter.EntityMetric{}
+		if producerId, ok := metric.Labels["PRODUCER"]; ok {
+			metricList, exist := producerMap[producerId]
+			if !exist {
+				metricList = []*exporter.EntityMetric{}
+			}
+			metricList = append(metricList, metric)
+			producerMap[producerId] = metricList
 		}
-		metricList = append(metricList, metric)
-		producerMap[producerId] = metricList
 		//
 		// consumer
 		//
-		if _, ok := metric.Labels["CONSUMER"]; ok {
-			consumerId := metric.Labels["CONSUMER"]
+		if consumerId, ok := metric.Labels["CONSUMER"]; ok {
 			metricList, exist := consumerMap[consumerId]
 			if !exist {
 				metricList = []*exporter.EntityMetric{}
@@ -142,6 +142,16 @@ func (d *P8sDiscoveryClient) buildEntities(metricExporter exporter.MetricExporte
 		dto, err := producerBuilder.Build(producerId, metrics)
 		if err != nil {
 			glog.Errorf("Error building entity for producer %s with metrics %v: %s", producerId, metrics, err)
+			continue
+		}
+		entities = append(entities, dto)
+	}
+
+	consumerBuilder := dtofactory.NewConsumerEntityBuilder(d.scope)
+	for consumerId, metrics := range consumerMap {
+		dto, err := consumerBuilder.Build(consumerId, metrics)
+		if err != nil {
+			glog.Errorf("Error building entity for consumer %s with metrics %v: %s", consumerId, metrics, err)
 			continue
 		}
 		entities = append(entities, dto)
