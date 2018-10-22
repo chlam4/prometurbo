@@ -43,7 +43,7 @@ func (b *producerEntityBuilder) Build(name string, metrics []*exporter.EntityMet
 
 	dtoBuilder := builder.NewEntityDTOBuilder(entityType, uuid).
 		DisplayName(displayName).
-		WithProperty(getEntityProperty(displayName)).
+		WithProperty(getEntityProperty(name)).
 		Monitored(false)
 
 	// Transaction commodity

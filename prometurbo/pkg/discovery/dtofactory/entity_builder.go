@@ -59,16 +59,15 @@ func (b *entityBuilder) getEntityId(entityType proto.EntityDTO_EntityType, entit
 
 func getReplacementMetaData(entityType proto.EntityDTO_EntityType, commTypes []proto.CommodityDTO_CommodityType, bought bool) *proto.EntityDTO_ReplacementEntityMetaData {
 	attr := constant.StitchingAttr
-	//useTopoExt := false
+	useTopoExt := true
 
 	b := builder.NewReplacementEntityMetaDataBuilder().
 		Matching(attr).
-		MatchingExternalProperty(attr)
-		//MatchingExternal(&proto.ServerEntityPropDef{
-		//	Entity:     &entityType,
-		//	Attribute:  &attr,
-		//	UseTopoExt: &useTopoExt,
-		//})
+		MatchingExternal(&proto.ServerEntityPropDef{
+			Entity:     &entityType,
+			Attribute:  &attr,
+			UseTopoExt: &useTopoExt,
+		})
 
 	for _, commType := range commTypes {
 		if bought {

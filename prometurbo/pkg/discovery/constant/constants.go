@@ -25,8 +25,8 @@ const (
 	// The default namespace of entity property
 	DefaultPropertyNamespace = "DEFAULT"
 
-	// The attribute used for stitching with other probes (e.g., prometurbo) with app and vapp
-	StitchingAttr string = "DisplayName"
+	// The attribute used for stitching with other probes with vapp
+	StitchingAttr string = "VappIds"
 
 	VAppPrefix = "vApp-"
 )
@@ -50,9 +50,17 @@ func GetEntityId(entityType proto.EntityDTO_EntityType, scope, entityName string
 }
 
 func GetReplacementEntityMetaData() *proto.EntityDTO_ReplacementEntityMetaData {
+	entityType := proto.EntityDTO_VIRTUAL_APPLICATION
+	attr := StitchingAttr
+	useTopoExt := true
+
 	return builder.NewReplacementEntityMetaDataBuilder().
 		Matching(StitchingAttr).
-		MatchingExternalProperty(StitchingAttr).
+		MatchingExternal(&proto.ServerEntityPropDef{
+			Entity:     &entityType,
+			Attribute:  &attr,
+			UseTopoExt: &useTopoExt,
+		}).
 		PatchBuyingWithProperty(proto.CommodityDTO_TRANSACTION, []string{Used}).
 		PatchBuyingWithProperty(proto.CommodityDTO_RESPONSE_TIME, []string{Used}).
 		PatchSellingWithProperty(proto.CommodityDTO_TRANSACTION, []string{Used, Capacity}).
