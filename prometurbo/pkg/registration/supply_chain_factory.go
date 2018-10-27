@@ -55,7 +55,7 @@ func (f *SupplyChainFactory) buildVAppSupplyBuilder() (*proto.TemplateDTO, error
 		Provider(proto.EntityDTO_VIRTUAL_APPLICATION, proto.Provider_LAYERED_OVER).
 		Buys(transactionTemplateComm).
 		Buys(respTimeTemplateComm)
-	builder.SetPriority(-1)
+	builder.SetPriority(1)
 	builder.SetTemplateType(proto.TemplateDTO_BASE)
 	//builder.SetTemplateType(proto.TemplateDTO_EXTENSION)
 
