@@ -26,12 +26,14 @@ const (
 	DefaultPropertyNamespace = "DEFAULT"
 
 	// The attribute used for stitching with other probes with vapp
-	StitchingAttr string = "VappIds"
+	StitchingLocalAttr    string = "VappIds"
+	StitchingExternalAttr string = "VappIds"
 
 	VAppPrefix = "vApp-"
 )
 
 var EntityTypeMap = map[proto.EntityDTO_EntityType]struct{}{
+	proto.EntityDTO_APPLICATION: {},
 	proto.EntityDTO_VIRTUAL_APPLICATION: {},
 }
 
@@ -49,18 +51,22 @@ func GetEntityId(entityType proto.EntityDTO_EntityType, scope, entityName string
 	return fmt.Sprintf("%s-%s/%s", entityType, scope, entityName)
 }
 
-func GetReplacementEntityMetaData() *proto.EntityDTO_ReplacementEntityMetaData {
+func GetExternalEntityProfDef() *proto.ServerEntityPropDef {
 	entityType := proto.EntityDTO_VIRTUAL_APPLICATION
-	attr := StitchingAttr
+	attr := StitchingExternalAttr
 	useTopoExt := true
 
+	return &proto.ServerEntityPropDef{
+		Entity:     &entityType,
+		Attribute:  &attr,
+		UseTopoExt: &useTopoExt,
+	}
+}
+
+func GetReplacementEntityMetaData() *proto.EntityDTO_ReplacementEntityMetaData {
 	return builder.NewReplacementEntityMetaDataBuilder().
-		Matching(StitchingAttr).
-		MatchingExternal(&proto.ServerEntityPropDef{
-			Entity:     &entityType,
-			Attribute:  &attr,
-			UseTopoExt: &useTopoExt,
-		}).
+		Matching(StitchingLocalAttr).
+		MatchingExternal(GetExternalEntityProfDef()).
 		PatchBuyingWithProperty(proto.CommodityDTO_TRANSACTION, []string{Used}).
 		PatchBuyingWithProperty(proto.CommodityDTO_RESPONSE_TIME, []string{Used}).
 		PatchSellingWithProperty(proto.CommodityDTO_TRANSACTION, []string{Used, Capacity}).

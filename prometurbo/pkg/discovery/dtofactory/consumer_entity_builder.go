@@ -25,13 +25,14 @@ func (b *consumerEntityBuilder) Build(name string, metrics []*exporter.EntityMet
 
 	dtoBuilder := builder.NewEntityDTOBuilder(entityType, uuid).
 		DisplayName(displayName).
-		WithProperty(getEntityProperty(name)).
-		Monitored(false)
+		WithProperty(getEntityProperty(constant.StitchingLocalAttr, name)).
+		Monitored(true)
 
 	for _, metric := range metrics {
 		key := metric.Labels["KEY"]
-		providerId := constant.GetEntityId(entityType, b.scope, metric.Labels["PRODUCER"])
-		provider := builder.CreateProvider(entityType, providerId)
+		providerId := metric.Labels["PRODUCER"]
+		providerUuid := constant.GetEntityId(entityType, b.scope, providerId)
+		provider := builder.CreateProvider(entityType, providerUuid)
 		if transactionUsed, exist := metric.Metrics[proto.CommodityDTO_TRANSACTION]; exist {
 			transactionCommodity, err := builder.NewCommodityDTOBuilder(proto.CommodityDTO_TRANSACTION).Key(key).Used(transactionUsed).Create()
 			if err != nil {
@@ -51,6 +52,7 @@ func (b *consumerEntityBuilder) Build(name string, metrics []*exporter.EntityMet
 	}
 
 	entityDto, err := dtoBuilder.ReplacedBy(constant.GetReplacementEntityMetaData()).Create()
+
 	if err != nil {
 		glog.Errorf("Error building consumer EntityDTO for entity %s with metrics %v: %s", name, metrics, err)
 		return nil, err

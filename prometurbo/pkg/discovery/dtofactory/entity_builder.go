@@ -58,7 +58,7 @@ func (b *entityBuilder) getEntityId(entityType proto.EntityDTO_EntityType, entit
 }
 
 func getReplacementMetaData(entityType proto.EntityDTO_EntityType, commTypes []proto.CommodityDTO_CommodityType, bought bool) *proto.EntityDTO_ReplacementEntityMetaData {
-	attr := constant.StitchingAttr
+	attr := constant.StitchingLocalAttr
 	useTopoExt := true
 
 	b := builder.NewReplacementEntityMetaDataBuilder().
@@ -80,8 +80,7 @@ func getReplacementMetaData(entityType proto.EntityDTO_EntityType, commTypes []p
 	return b.Build()
 }
 
-func getEntityProperty(value string) *proto.EntityDTO_EntityProperty {
-	attr := constant.StitchingAttr
+func getEntityProperty(attr, value string) *proto.EntityDTO_EntityProperty {
 	ns := constant.DefaultPropertyNamespace
 
 	return &proto.EntityDTO_EntityProperty{
@@ -109,7 +108,7 @@ func (b *entityBuilder) createConsumerEntity(provider *proto.EntityDTO, name str
 		DisplayName(constant.VAppPrefix + name).
 		Provider(providerDto).
 		BuysCommodities(commodities).
-		WithProperty(getEntityProperty(constant.VAppPrefix + name)).
+		WithProperty(getEntityProperty(constant.StitchingLocalAttr, constant.VAppPrefix + name)).
 		ReplacedBy(getReplacementMetaData(vAppType, commTypes, true)).
 		Monitored(false).
 		Create()
@@ -184,7 +183,7 @@ func (b *entityBuilder) createEntityDto() (*proto.EntityDTO, error) {
 	entityDto, err := builder.NewEntityDTOBuilder(entityType, id).
 		DisplayName(constant.VAppPrefix+name).
 		SellsCommodities(commodities).
-		WithProperty(getEntityProperty(name)).
+		WithProperty(getEntityProperty(constant.StitchingLocalAttr, name)).
 		ReplacedBy(getReplacementMetaData(entityType, commTypes, false)).
 		Monitored(false).
 		Create()

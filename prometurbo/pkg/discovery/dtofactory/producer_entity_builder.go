@@ -7,6 +7,7 @@ import (
 	"github.com/turbonomic/turbo-go-sdk/pkg/builder"
 	"github.com/turbonomic/turbo-go-sdk/pkg/proto"
 	"math"
+	"strings"
 )
 
 type producerEntityBuilder struct {
@@ -43,12 +44,20 @@ func (b *producerEntityBuilder) Build(name string, metrics []*exporter.EntityMet
 
 	dtoBuilder := builder.NewEntityDTOBuilder(entityType, uuid).
 		DisplayName(displayName).
-		WithProperty(getEntityProperty(name)).
-		Monitored(false)
+		WithProperty(getEntityProperty(constant.StitchingLocalAttr, name)).
+		Monitored(true)
+	// TODO: leaving producers monitored until stitched with Istio route probe and the backend function providers
+	if !strings.Contains(name, "kong") {
+		dtoBuilder.Monitored(false).ReplacedBy(constant.GetReplacementEntityMetaData())
+	}
 
 	// Transaction commodity
 	//
 	transactionCapacity := math.Max(constant.TPSCap, totalTransactionUsed)	// Adjust capacity in case utilization > 1
+	// TODO: for demo only - emulating a lower transaction capacity in a cell tower to trigger moves
+	if strings.Contains(name, "foo") {
+		transactionCapacity = math.Max(5, totalTransactionUsed)
+	}
 	// as Market doesn't allow it
 	transactionCommodity, err := builder.NewCommodityDTOBuilder(proto.CommodityDTO_TRANSACTION).
 		Used(totalTransactionUsed).Capacity(transactionCapacity).Key(key).Create()
@@ -71,7 +80,7 @@ func (b *producerEntityBuilder) Build(name string, metrics []*exporter.EntityMet
 		dtoBuilder.SellsCommodity(responseTimeCommodity)
 	}
 
-	entityDto, err := dtoBuilder.ReplacedBy(constant.GetReplacementEntityMetaData()).Create()
+	entityDto, err := dtoBuilder.Create()
 	if err != nil {
 		glog.Errorf("Error building producer EntityDTO for entity %s with metrics %v: %s", name, metrics, err)
 		return nil, err
