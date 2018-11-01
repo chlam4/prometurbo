@@ -45,11 +45,7 @@ func (b *producerEntityBuilder) Build(name string, metrics []*exporter.EntityMet
 	dtoBuilder := builder.NewEntityDTOBuilder(entityType, uuid).
 		DisplayName(displayName).
 		WithProperty(getEntityProperty(constant.StitchingLocalAttr, name)).
-		Monitored(true)
-	// TODO: leaving producers monitored until stitched with Istio route probe and the backend function providers
-	if !strings.Contains(name, "kong") {
-		dtoBuilder.Monitored(false).ReplacedBy(constant.GetReplacementEntityMetaData())
-	}
+		Monitored(false).ReplacedBy(constant.GetReplacementEntityMetaData())
 
 	// Transaction commodity
 	//

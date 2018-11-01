@@ -26,8 +26,8 @@ const (
 	DefaultPropertyNamespace = "DEFAULT"
 
 	// The attribute used for stitching with other probes with vapp
-	StitchingLocalAttr    string = "VappIds"
-	StitchingExternalAttr string = "VappIds"
+	StitchingLocalAttr    string = "LocalName"
+	StitchingExternalAttr string = "externalnames"
 
 	VAppPrefix = "vApp-"
 )
