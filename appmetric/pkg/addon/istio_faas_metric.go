@@ -87,8 +87,8 @@ func (r *IstioFaaSEntityGetter) addEntity(mdat []xfire.MetricData, result map[st
 		uri, ok7 := metric.Labels["request_path"]
 		resp_code, ok8 := metric.Labels["response_code"]
 
-		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 || !ok7 || !ok8 || dstApp == "unknown" || resp_code != "200" || svcNs != "kong" {
-			glog.Errorf("Some required label not found or destination app is unknown in metric %v", metric)
+		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 || !ok7 || !ok8 || dstApp != "kong" || resp_code != "200" {
+			glog.Errorf("Some required label not found or destination app is not kong in metric %v", metric)
 			continue
 		}
 
