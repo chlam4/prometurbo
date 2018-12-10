@@ -3,6 +3,7 @@
 #
 FROM alpine:3.7
 RUN apk --update upgrade && apk add ca-certificates && update-ca-certificates
+RUN apk add --no-cache curl
 
 ARG GIT_COMMIT
 ENV GIT_COMMIT ${GIT_COMMIT}
