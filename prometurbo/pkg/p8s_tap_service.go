@@ -59,8 +59,8 @@ func createTAPService(args *conf.PrometurboArgs) (*service.TAPService, error) {
 	glog.V(3).Infof("Read service configuration from %s: %++v", confPath, conf)
 
 	communicator := conf.Communicator
-	targetAddr := conf.TargetConf.Address
 	scope := conf.TargetConf.Scope
+	targetAddr := scope + "-" + conf.TargetConf.Address
 	metricExporters := []exporter.MetricExporter{exporter.NewMetricExporter(conf.MetricExporterEndpoint)}
 
 	registrationClient := &registration.P8sRegistrationClient{}
