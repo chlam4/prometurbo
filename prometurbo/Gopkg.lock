@@ -27,14 +27,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6b617d70f2e6fb5ea1fb04cd0c37badc0d8d2e1f05283cb6ecf9a00a998287b4"
-  name = "github.com/turbonomic/prometurbo"
-  packages = ["appmetric/pkg/inter"]
-  pruneopts = "UT"
-  revision = "cc77ec626c92877c44b565cdc6f79831b1bacaca"
-
-[[projects]]
-  branch = "master"
   digest = "1:64510e935a9274334439ed06996736b13d97ead708cba43901bb572ae4daea23"
   name = "github.com/turbonomic/turbo-api"
   packages = [
@@ -67,7 +59,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/golang/glog",
-    "github.com/turbonomic/prometurbo/appmetric/pkg/inter",
     "github.com/turbonomic/turbo-go-sdk/pkg/builder",
     "github.com/turbonomic/turbo-go-sdk/pkg/probe",
     "github.com/turbonomic/turbo-go-sdk/pkg/proto",
