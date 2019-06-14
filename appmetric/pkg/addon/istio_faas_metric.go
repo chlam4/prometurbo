@@ -57,7 +57,10 @@ func (r *IstioFaaSEntityGetter) GetEntityMetric(client *xfire.RestClient) ([]*in
 			glog.Errorf("Failed to get Istio metrics for FaaS: %v", err)
 			return result, err
 		} else {
-			r.addEntity(metrics, midResult, metricType)
+			err = r.addEntity(metrics, midResult, metricType)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -80,30 +83,32 @@ func (r *IstioFaaSEntityGetter) addEntity(mdat []xfire.MetricData, result map[st
 
 		srcApp, ok1 := metric.Labels["source_app"]
 		srcNs, ok2 := metric.Labels["source_workload_namespace"]
-		dstApp, ok3 := metric.Labels["destination_app"]
+		//dstWorkload, ok3 := metric.Labels["destination_workload"]
 		dstNs, ok4 := metric.Labels["destination_workload_namespace"]
 		svc, ok5 := metric.Labels["destination_service"]
 		svcNs, ok6 := metric.Labels["destination_service_namespace"]
 		uri, ok7 := metric.Labels["request_path"]
-		resp_code, ok8 := metric.Labels["response_code"]
+		respCode, ok8 := metric.Labels["response_code"]
 
-		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 || !ok7 || !ok8 || dstApp != "kong" || resp_code != "200" {
-			glog.Errorf("Some required label not found or destination app is not kong in metric %v", metric)
+		if !ok1 || !ok2 || !ok4 || !ok5 || !ok6 || !ok7 || !ok8 || respCode != "200" {
+			glog.Infof("Some required label not found or response code is not 200 in metric %v", metric)
+			continue
+		}
+
+		// this prototype only supports using kong as the API gateway
+		if dstNs != svcNs || svcNs != "kong" {
+			glog.Infof("This prototype supports only kong as the API gateway but this metric is not destined for kong: %v", metric)
 			continue
 		}
 
 		consumerId := srcNs + "/" + srcApp
-		providerId := dstNs + "/" + dstApp + "-service"
-		// suffix to be matched with the k8s service for Knative functions
-		if dstNs == svcNs {
-			//
-			// Destination is some function gateway such as Kong;
-			// qualify the provider using src_app + service_host + uri
-			// e.g. foo/kong-proxy.kong.svc.cluster.local/hello-kong
-			// Read this as: foo calls kong-proxy with path "/hello-kong"
-			//
-			providerId = srcApp + "/" + svc + uri
-		}
+		//
+		// Destination is some API gateway such as Kong;
+		// qualify the provider using src_app + service_host + uri
+		// e.g. foo/kong-proxy.kong.svc.cluster.local/hello-kong
+		// Read this as: foo calls kong-proxy with path "/hello-kong"
+		//
+		providerId := srcApp + "/" + svc + uri
 
 		id := consumerId + "-" + providerId
 		entity, exist := result[id]
