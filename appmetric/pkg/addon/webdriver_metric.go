@@ -83,7 +83,8 @@ func (r *WebdriverEntityGetter) addEntity(mdat []xfire.MetricData, result map[st
 		}
 
 		//1. get IP
-		var addr, err = url.Parse(metric.Labels[addrName])
+		urlString := metric.Labels[addrName]
+		addr, err := url.Parse(urlString)
 		if err != nil {
 			glog.Errorf("Label %v is not found", addrName)
 			continue
@@ -99,11 +100,13 @@ func (r *WebdriverEntityGetter) addEntity(mdat []xfire.MetricData, result map[st
 		entity, ok := result[ip]
 		if !ok {
 			// Create Application Entity
-			entity = inter.NewEntityMetric(ip, inter.AppEntity)
+			uid := urlString
+			entity = inter.NewEntityMetric(uid, inter.AppEntity)
 			entity.SetLabel(inter.IP, ip)
 			entity.SetLabel(inter.Port, port)
 			entity.SetLabel(inter.Category, r.Category())
-			result[ip] = entity
+			entity.SetLabel(inter.Name, uid)
+			result[uid] = entity
 		}
 
 		entity.SetMetric(key, metric.GetValue())

@@ -3,6 +3,7 @@ package dtofactory
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/turbonomic/prometurbo/appmetric/pkg/inter"
 	"github.com/turbonomic/prometurbo/prometurbo/pkg/discovery/constant"
 	"github.com/turbonomic/prometurbo/prometurbo/pkg/discovery/exporter"
 	"github.com/turbonomic/turbo-go-sdk/pkg/builder"
@@ -30,19 +31,28 @@ func NewEntityBuilder(keepStandalone bool, createProxyVM bool, scope string, met
 
 func (b *entityBuilder) Build() ([]*proto.EntityDTO, error) {
 	metric := b.metric
-	ip := metric.UID
-
+	uid := metric.UID
+	labels := metric.Labels
+	// In the old ambiguous way, the IP address is carried by the 'uid' field,
+	ip := uid
+	if val, ok := labels[inter.IP]; ok {
+		ip = val
+	}
+	name := uid
+	if val, ok := labels[inter.Name]; ok {
+		name = val
+	}
 
 	if b.createProxyVM {
-		providerDto, err := b.createProviderEntity(ip)
+		providerEntityDto, err := b.createProviderEntity(uid, ip, name)
 
 		if err != nil {
 			glog.Errorf("Error building provider EntityDTO from metric %v: %s", metric, err)
 			return nil, err
 		}
-		dtos := []*proto.EntityDTO{providerDto}
+		dtos := []*proto.EntityDTO{providerEntityDto}
 
-		entityDto, err := b.createEntityDto(providerDto)
+		entityDto, err := b.createEntityDto(providerEntityDto, uid, ip, name)
 
 		if err != nil {
 			glog.Errorf("Error building EntityDTO from metric %v: %s", metric, err)
@@ -51,7 +61,7 @@ func (b *entityBuilder) Build() ([]*proto.EntityDTO, error) {
 
 		dtos = append(dtos, entityDto)
 
-		consumerDto, err := b.createConsumerEntity(entityDto, ip)
+		consumerDto, err := b.createConsumerEntity(entityDto, uid, ip, name)
 
 		if err != nil {
 			glog.Errorf("Error building consumer EntityDTO from metric %v: %s", metric, err)
@@ -61,7 +71,7 @@ func (b *entityBuilder) Build() ([]*proto.EntityDTO, error) {
 
 		return dtos, nil
 	} else {
-		entityDto, err := b.createEntityDto(nil)
+		entityDto, err := b.createEntityDto(nil, uid, ip, name)
 
 		if err != nil {
 			glog.Errorf("Error building EntityDTO from metric %v: %s", metric, err)
@@ -70,7 +80,7 @@ func (b *entityBuilder) Build() ([]*proto.EntityDTO, error) {
 
 		dtos := []*proto.EntityDTO{entityDto}
 
-		consumerDto, err := b.createConsumerEntity(entityDto, ip)
+		consumerDto, err := b.createConsumerEntity(entityDto, uid, ip, name)
 
 		if err != nil {
 			glog.Errorf("Error building consumer EntityDTO from metric %v: %s", metric, err)
@@ -123,10 +133,11 @@ func getEntityProperty(value string) *proto.EntityDTO_EntityProperty {
 }
 
 // Creates provider entity from the application entity. Currently, the use case is to create VM for Application.
-func (b *entityBuilder) createProviderEntity(ip string) (*proto.EntityDTO, error) {
+func (b *entityBuilder) createProviderEntity(uid, ip, name string) (*proto.EntityDTO, error) {
 	// For application entity, we also want to create proxy VM entity.
 	VMType := proto.EntityDTO_VIRTUAL_MACHINE
-	id := b.getEntityId(VMType, ip)
+	id := b.getEntityId(VMType, uid)
+	displayName := b.getEntityId(VMType, name)
 
 	commodities := []*proto.CommodityDTO{}
 
@@ -144,7 +155,7 @@ func (b *entityBuilder) createProviderEntity(ip string) (*proto.EntityDTO, error
 	}
 
 	vmDto, err := builder.NewEntityDTOBuilder(VMType, id).
-		DisplayName(id).
+		DisplayName(displayName).
 		SellsCommodities(commodities).
 		WithProperty(getEntityProperty(ip)).
 		ReplacedBy(builder.NewReplacementEntityMetaDataBuilder().
@@ -164,9 +175,9 @@ func (b *entityBuilder) createProviderEntity(ip string) (*proto.EntityDTO, error
 }
 
 // Creates consumer entity from a given provider entity. Currently, the use case is to create vApp from Application.
-func (b *entityBuilder) createConsumerEntity(provider *proto.EntityDTO, ip string) (*proto.EntityDTO, error) {
+func (b *entityBuilder) createConsumerEntity(provider *proto.EntityDTO, uid, ip, name string) (*proto.EntityDTO, error) {
 	entityType := *provider.EntityType
-	providerId := b.getEntityId(entityType, ip)
+	providerId := b.getEntityId(entityType, uid)
 	commodities := provider.CommoditiesSold
 	commTypes := []proto.CommodityDTO_CommodityType{}
 	for _, comm := range commodities {
@@ -175,54 +186,37 @@ func (b *entityBuilder) createConsumerEntity(provider *proto.EntityDTO, ip strin
 
 	// For application entity, we also want to create proxy entities for vApp.
 	// The logic may or may not apply to other entity types depending on future use cases, if any.
-	if b.createProxyVM {
-		if entityType == proto.EntityDTO_APPLICATION {
-			provider := builder.CreateProvider(entityType, providerId)
-			vAppType := proto.EntityDTO_VIRTUAL_APPLICATION
-			id := b.getEntityId(vAppType, ip)
-			vappDto, err := builder.NewEntityDTOBuilder(vAppType, id).
-				DisplayName(id).
-				Provider(provider).
-				BuysCommodities(commodities).
-				WithProperty(getEntityProperty(constant.VAppPrefix + ip)).
-				Monitored(false).
-				Create()
-
-			if err != nil {
-				return nil, err
-			}
-
-			return vappDto, nil
-		}
-	} else {
-		if entityType == proto.EntityDTO_APPLICATION {
-			provider := builder.CreateProvider(entityType, providerId)
-			vAppType := proto.EntityDTO_VIRTUAL_APPLICATION
-			id := b.getEntityId(vAppType, ip)
-			vappDto, err := builder.NewEntityDTOBuilder(vAppType, id).
-				DisplayName(id).
-				Provider(provider).
-				BuysCommodities(commodities).
-				WithProperty(getEntityProperty(constant.VAppPrefix + ip)).
-				ReplacedBy(getReplacementMetaData(vAppType, commTypes, true)).
-				Monitored(false).
-				Create()
-
-			if err != nil {
-				return nil, err
-			}
-
-			vappDto.KeepStandalone = &b.keepStandalone
-
-			return vappDto, nil
-		}
+	if entityType != proto.EntityDTO_APPLICATION {
+		return nil, fmt.Errorf("Unsupported provider type %v to create consumer", entityType)
 	}
 
-	return nil, fmt.Errorf("Unsupported provider type %v to create consumer", entityType)
+	providerDto := builder.CreateProvider(entityType, providerId)
+	vAppType := proto.EntityDTO_VIRTUAL_APPLICATION
+	id := b.getEntityId(vAppType, uid)
+	displayName := b.getEntityId(vAppType, name)
+	vappDtoBuilder := builder.NewEntityDTOBuilder(vAppType, id).
+		DisplayName(displayName).
+		Provider(providerDto).
+		BuysCommodities(commodities).
+		WithProperty(getEntityProperty(constant.VAppPrefix + ip)).
+		Monitored(false)
+
+	if !b.createProxyVM {
+		vappDtoBuilder.ReplacedBy(getReplacementMetaData(vAppType, commTypes, true))
+	}
+	vappDto, err := vappDtoBuilder.Create()
+	if err != nil {
+		return nil, err
+	}
+
+	if !b.createProxyVM {
+		vappDto.KeepStandalone = &b.keepStandalone
+	}
+	return vappDto, nil
 }
 
 // Creates entity DTO from the EntityMetric
-func (b *entityBuilder) createEntityDto(provider *proto.EntityDTO) (*proto.EntityDTO, error) {
+func (b *entityBuilder) createEntityDto(providerEntityDto *proto.EntityDTO, uid, ip, name string) (*proto.EntityDTO, error) {
 	metric := b.metric
 
 	entityType := metric.Type
@@ -232,9 +226,7 @@ func (b *entityBuilder) createEntityDto(provider *proto.EntityDTO) (*proto.Entit
 		return nil, err
 	}
 
-	ip := metric.UID
 	labels := metric.Labels
-
 	var commKey, serviceName, serviceNamespace string
 	serviceName, serviceNameExists := labels["service_name"]
 	serviceNamespace, serviceNamespaceExists := labels["service_ns"]
@@ -284,47 +276,33 @@ func (b *entityBuilder) createEntityDto(provider *proto.EntityDTO) (*proto.Entit
 		commTypes = append(commTypes, commType)
 	}
 
-	id := b.getEntityId(entityType, ip)
+	id := b.getEntityId(entityType, uid)
+	displayName := b.getEntityId(entityType, name)
+	entityDtoBuilder := builder.NewEntityDTOBuilder(entityType, id).
+		DisplayName(displayName).
+		SellsCommodities(commodities).
+		WithProperty(getEntityProperty(ip)).
+		ReplacedBy(getReplacementMetaData(entityType, commTypes, false)).
+		Monitored(false)
 
-	if provider != nil {
-		providerEntityType := *provider.EntityType
-		providerId := b.getEntityId(providerEntityType, ip)
-		commoditiesBought := provider.CommoditiesSold
-		provider := builder.CreateProvider(providerEntityType, providerId)
-		entityDto, err := builder.NewEntityDTOBuilder(entityType, id).
-			DisplayName(id).
-			SellsCommodities(commodities).
-			Provider(provider).
-			BuysCommodities(commoditiesBought).
-			WithProperty(getEntityProperty(ip)).
-			Monitored(false).
-			Create()
-
-		if err != nil {
-			glog.Errorf("Error building EntityDTO from metric %v: %s", metric, err)
-			return nil, err
-		}
-
-		glog.V(4).Infof("Entity DTO: %++v", entityDto)
-		return entityDto, nil
-
-	} else {
-		entityDto, err := builder.NewEntityDTOBuilder(entityType, id).
-			DisplayName(id).
-			SellsCommodities(commodities).
-			WithProperty(getEntityProperty(ip)).
-			ReplacedBy(getReplacementMetaData(entityType, commTypes, false)).
-			Monitored(false).
-			Create()
-
-		if err != nil {
-			glog.Errorf("Error building EntityDTO from metric %v: %s", metric, err)
-			return nil, err
-		}
-
-		entityDto.KeepStandalone = &b.keepStandalone
-
-		glog.V(4).Infof("Entity DTO: %++v", entityDto)
-		return entityDto, nil
+	if providerEntityDto != nil {
+		providerEntityType := *providerEntityDto.EntityType
+		providerId := b.getEntityId(providerEntityType, uid)
+		commoditiesBought := providerEntityDto.CommoditiesSold
+		providerDTO := builder.CreateProvider(providerEntityType, providerId)
+		entityDtoBuilder.Provider(providerDTO).BuysCommodities(commoditiesBought)
 	}
+
+	entityDto, err := entityDtoBuilder.Create()
+	if err != nil {
+		glog.Errorf("Error building EntityDTO from metric %v: %s", metric, err)
+		return nil, err
+	}
+
+	if providerEntityDto == nil {
+		entityDto.KeepStandalone = &b.keepStandalone
+	}
+
+	glog.V(4).Infof("Entity DTO: %++v", entityDto)
+	return entityDto, nil
 }
